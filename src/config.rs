@@ -3,7 +3,6 @@ use dotenvy::dotenv;
 #[derive(Debug, Clone)]
 pub struct Config {
     pub port: u16,
-    pub fork_url: Option<String>,
     pub etherscan_key: Option<String>,
     pub api_key: Option<String>,
     pub max_request_size: u64,
@@ -20,7 +19,6 @@ fn load_config() -> Config {
         .unwrap_or("8080".to_string())
         .parse::<u16>()
         .expect("PORT must be a valid u16.");
-    let fork_url = std::env::var("FORK_URL").ok().filter(|k| !k.is_empty());
     let etherscan_key = std::env::var("ETHERSCAN_KEY")
         .ok()
         .filter(|k| !k.is_empty());
@@ -32,7 +30,6 @@ fn load_config() -> Config {
         * 1024;
 
     Config {
-        fork_url,
         port,
         etherscan_key,
         api_key,
@@ -47,24 +44,6 @@ mod tests {
     fn test_config_port_number() {
         temp_env::with_var("PORT", Some("not a number"), || {
             super::load_config();
-        });
-    }
-
-    #[test]
-    fn test_config_fork_url() {
-        temp_env::with_vars([("FORK_URL", Some("a"))], || {
-            let config = super::load_config();
-            assert_eq!(config.fork_url, Some("a".to_string()));
-        });
-
-        temp_env::with_vars([("FORK_URL", Some(""))], || {
-            let config = super::load_config();
-            assert_eq!(config.fork_url, None);
-        });
-
-        temp_env::with_vars_unset([("FORK_URL")], || {
-            let config = super::load_config();
-            assert_eq!(config.fork_url, None);
         });
     }
 

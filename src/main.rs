@@ -44,7 +44,7 @@ async fn main() {
 
     log::info!(
         target: "ts::api",
-        "Starting server on port {port} fork_url {config.fork_url}"
+        "Starting server on port {port}"
     );
     warp::serve(routes).run(([0, 0, 0, 0], port)).await;
 }

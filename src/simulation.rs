@@ -16,8 +16,7 @@ use warp::reply::Json;
 use warp::Rejection;
 
 use crate::errors::{
-    IncorrectChainIdError, InvalidBlockNumbersError, MultipleChainIdsError, NoURLForChainIdError,
-    StateNotFound,
+    IncorrectChainIdError, InvalidBlockNumbersError, MultipleChainIdsError, StateNotFound,
 };
 use crate::evm::StorageOverride;
 use crate::SharedSimulationState;
@@ -28,6 +27,7 @@ use super::evm::{CallRawRequest, Evm};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SimulationRequest {
+    pub rpc_url: String,
     pub chain_id: u64,
     pub from: Address,
     pub to: Address,
@@ -58,6 +58,7 @@ pub struct SimulationResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StatefulSimulationRequest {
+    pub rpc_url: String,
     pub chain_id: u64,
     pub gas_limit: u64,
     pub block_number: Option<u64>,
@@ -148,36 +149,6 @@ impl<'de> Deserialize<'de> for PermissiveUint {
     }
 }
 
-fn chain_id_to_fork_url(chain_id: u64) -> Result<String, Rejection> {
-    match chain_id {
-        // ethereum
-        1 => Ok("https://eth.llamarpc.com".to_string()),
-        5 => Ok("https://eth-goerli.g.alchemy.com/v2/demo".to_string()),
-        11155111 => Ok("https://eth-sepolia.g.alchemy.com/v2/demo".to_string()),
-        // polygon
-        137 => Ok("https://polygon-mainnet.g.alchemy.com/v2/demo".to_string()),
-        80001 => Ok("https://polygon-mumbai.g.alchemy.com/v2/demo".to_string()),
-        // avalanche
-        43114 => Ok("https://api.avax.network/ext/bc/C/rpc".to_string()),
-        43113 => Ok("https://api.avax-test.network/ext/bc/C/rpc".to_string()),
-        // fantom
-        250 => Ok("https://rpcapi.fantom.network/".to_string()),
-        4002 => Ok("https://rpc.testnet.fantom.network/".to_string()),
-        // xdai
-        100 => Ok("https://rpc.xdaichain.com/".to_string()),
-        // bsc
-        56 => Ok("https://bsc-dataseed.binance.org/".to_string()),
-        97 => Ok("https://data-seed-prebsc-1-s1.binance.org:8545/".to_string()),
-        // arbitrum
-        42161 => Ok("https://arb1.arbitrum.io/rpc".to_string()),
-        421613 => Ok("https://goerli-rollup.arbitrum.io/rpc".to_string()),
-        // optimism
-        10 => Ok("https://mainnet.optimism.io/".to_string()),
-        420 => Ok("https://goerli.optimism.io/".to_string()),
-        _ => Err(NoURLForChainIdError.into()),
-    }
-}
-
 async fn run(
     evm: &mut Evm,
     transaction: SimulationRequest,
@@ -227,9 +198,7 @@ async fn run(
 }
 
 pub async fn simulate(transaction: SimulationRequest, config: Config) -> Result<Json, Rejection> {
-    let fork_url = config
-        .fork_url
-        .unwrap_or(chain_id_to_fork_url(transaction.chain_id)?);
+    let fork_url = transaction.rpc_url.to_string();
     let mut evm = Evm::new(
         None,
         fork_url,
@@ -261,10 +230,7 @@ pub async fn simulate_bundle(
     let first_chain_id = transactions[0].chain_id;
     let first_block_number = transactions[0].block_number;
     let first_block_timestamp = transactions[0].block_timestamp;
-
-    let fork_url = config
-        .fork_url
-        .unwrap_or(chain_id_to_fork_url(first_chain_id)?);
+    let fork_url = transactions[0].rpc_url.to_string();
     let mut evm = Evm::new(
         None,
         fork_url,
@@ -315,9 +281,7 @@ pub async fn simulate_stateful_new(
     config: Config,
     state: Arc<SharedSimulationState>,
 ) -> Result<Json, Rejection> {
-    let fork_url = config
-        .fork_url
-        .unwrap_or(chain_id_to_fork_url(stateful_simulation_request.chain_id)?);
+    let fork_url = stateful_simulation_request.rpc_url;
     let mut evm = Evm::new(
         None,
         fork_url,
