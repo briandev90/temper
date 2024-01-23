@@ -32,7 +32,6 @@ pub struct SimulationRequest {
     pub from: Address,
     pub to: Address,
     pub data: Option<Bytes>,
-    pub gas_limit: u64,
     pub value: Option<PermissiveUint>,
     pub access_list: Option<AccessList>,
     pub block_number: Option<u64>,
@@ -60,7 +59,6 @@ pub struct SimulationResponse {
 pub struct StatefulSimulationRequest {
     pub rpc_url: String,
     pub chain_id: u64,
-    pub gas_limit: u64,
     pub block_number: Option<u64>,
     pub block_timestamp: Option<u64>,
 }
@@ -173,7 +171,7 @@ async fn run(
         format_trace: transaction.format_trace.unwrap_or_default(),
     };
     let result = if commit {
-        evm.call_raw_committing(call, transaction.gas_limit).await?
+        evm.call_raw_committing(call).await?
     } else {
         evm.call_raw(call).await?
     };
@@ -203,7 +201,6 @@ pub async fn simulate(transaction: SimulationRequest, config: Config) -> Result<
         None,
         fork_url,
         transaction.block_number,
-        transaction.gas_limit,
         true,
         config.etherscan_key,
     );
@@ -235,7 +232,6 @@ pub async fn simulate_bundle(
         None,
         fork_url,
         first_block_number,
-        transactions[0].gas_limit,
         true,
         config.etherscan_key,
     );
@@ -286,7 +282,6 @@ pub async fn simulate_stateful_new(
         None,
         fork_url,
         stateful_simulation_request.block_number,
-        stateful_simulation_request.gas_limit,
         true,
         config.etherscan_key,
     );

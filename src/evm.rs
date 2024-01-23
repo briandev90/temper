@@ -69,7 +69,6 @@ impl Evm {
         env: Option<Env>,
         fork_url: String,
         fork_block_number: Option<u64>,
-        gas_limit: u64,
         tracing: bool,
         etherscan_key: Option<String>,
     ) -> Self {
@@ -97,7 +96,6 @@ impl Evm {
         let db = Backend::spawn(Some(fork_opts.clone()));
 
         let mut builder = ExecutorBuilder::default()
-            .with_gas_limit(gas_limit.into())
             .set_tracing(tracing);
 
         if let Some(env) = env {
@@ -224,9 +222,7 @@ impl Evm {
     pub async fn call_raw_committing(
         &mut self,
         call: CallRawRequest,
-        gas_limit: u64,
     ) -> Result<CallRawResult, EvmError> {
-        self.executor.set_gas_limit(gas_limit.into());
         self.set_access_list(call.access_list);
         let res = self
             .executor
