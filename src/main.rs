@@ -3,9 +3,12 @@ use std::{env, sync::Arc};
 use dashmap::DashMap;
 
 use enso_temper::{
-    config::config, errors::handle_rejection, simulate_routes, SharedSimulationState,
+    config::config,
+    errors::handle_rejection,
+    simulate_routes,
+    SharedSimulationState,
 };
-use warp::Filter;
+use warp::{http::StatusCode, Filter};
 
 #[tokio::main]
 async fn main() {
@@ -16,31 +19,22 @@ async fn main() {
     pretty_env_logger::init();
 
     let config = config();
-
     let port = config.port;
-    let api_key = config.clone().api_key;
-
-    let api_base = warp::path("api").and(warp::path("v1"));
-
-    let api_base = if let Some(api_key) = api_key {
-        log::info!(
-            target: "ts::api",
-            "Running with API key protection"
-        );
-        let api_key_filter = warp::header::exact("X-API-KEY", Box::leak(api_key.into_boxed_str()));
-        api_base.and(api_key_filter).boxed()
-    } else {
-        api_base.boxed()
-    };
 
     let shared_state = Arc::new(SharedSimulationState {
         evms: Arc::new(DashMap::new()),
     });
 
-    let routes = api_base
+    let api_base = warp::path("api").and(warp::path("v1"));
+    let api_routes = api_base
         .and(simulate_routes(config, shared_state))
         .recover(handle_rejection)
         .with(warp::log("ts::api"));
+
+    let health_route = warp::path!("health")
+        .map(|| StatusCode::OK);
+
+    let routes = health_route.or(api_routes);
 
     log::info!(
         target: "ts::api",
